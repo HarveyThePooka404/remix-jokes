@@ -22,7 +22,6 @@ import stylesUrl from "~/styles/login.css";
   }
   
   function validateUrl(url: any) {
-    console.log(url);
     let urls = ["/jokes", "/", "https://remix.run"];
     if (urls.includes(url)) {
       return url;

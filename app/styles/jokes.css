@@ -64,6 +64,15 @@
     flex: 1;
     margin-left: 1rem;
   }
+
+  .button-container {
+    margin-top: 2em;
+    display: flex;
+  }
+
+  .button-container button {
+    max-width: 200px;
+  }
   
   .jokes-footer {
     padding-top: 2rem;

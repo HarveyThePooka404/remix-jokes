@@ -2,6 +2,8 @@ import { PrismaClient } from "@prisma/client";
 const db = new PrismaClient();
 
 async function seed() {
+
+  //creates a default user during tutorial
   const kody = await db.user.create({
     data: {
       username: "Kody",
@@ -10,6 +12,7 @@ async function seed() {
         "$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lSsvqNu/1u",
     },
   }); 
+  
   await Promise.all(
     getJokes().map((joke) => {
       const data = { jokesterId: kody.id, ...joke };
