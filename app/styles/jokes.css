@@ -70,7 +70,21 @@
     padding-bottom: 1rem;
     border-top: 1px solid var(--color-border);
   }
+
+  .commentBox {
+    background-color: white;
+    color: black;
+    border-radius: 10px;
+    padding-left: 1rem;
+    padding-bottom: .5rem;
+    margin-bottom: .8rem;
+  }
   
+  .commentTitle {
+    color: grey;
+    padding-top: .2rem;
+  }
+
   @media print, (min-width: 640px) {
     .jokes-header .logo {
       display: none;

@@ -17,6 +17,7 @@ model User {
   username     String   @unique
   passwordHash String
   jokes        Joke[]
+  comments     Comment[]
 }
 
 model Joke {
@@ -27,4 +28,15 @@ model Joke {
   updatedAt  DateTime @updatedAt
   name       String
   content    String
+  comment    Comment[]
+}
+
+model Comment {
+  id          String    @id @default(uuid())
+  commenterId String
+  commenter   User      @relation(fields: [commenterId], references: [id])
+  createdAt   DateTime  @default(now())
+  comment     String
+  jokeId      String
+  joke        Joke      @relation(fields: [jokeId], references: [id])
 }

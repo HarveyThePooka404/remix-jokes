@@ -1,4 +1,4 @@
-import type { Joke } from "@prisma/client";
+import type { Joke, Comment } from "@prisma/client";
 import type {
   ActionFunction,
   LoaderFunction,
@@ -18,7 +18,7 @@ import {
   requireUserId,
 } from "~/util/session.server";
 
-type LoaderData = { joke: Joke; isOwner: boolean };
+type LoaderData = { joke: Joke; comments: Array<Comment>,  isOwner: boolean };
 
 export const loader: LoaderFunction = async ({
   request,
@@ -33,8 +33,16 @@ export const loader: LoaderFunction = async ({
       status: 404,
     });
   }
+
+  const comments = await db.comment.findMany({
+    where: {
+      jokeId: params.jokeId
+    }
+  })
+
   const data: LoaderData = {
     joke,
+    comments, 
     isOwner: userId === joke.jokesterId,
   };
   return json(data);
@@ -45,31 +53,54 @@ export const action: ActionFunction = async ({
   params,
 }) => {
   const form = await request.formData();
-  if (form.get("_method") !== "delete") {
+  if (form.get("_method") !== "delete" && form.get("_method") !== "addComment") {
     throw new Response(
       `The _method ${form.get("_method")} is not supported`,
       { status: 400 }
     );
   }
+
   const userId = await requireUserId(request);
-  const joke = await db.joke.findUnique({
-    where: { id: params.jokeId },
-  });
-  if (!joke) {
-    throw new Response("Can't delete what does not exist", {
-      status: 404,
+
+  switch(form.get("_method")) {
+    case("delete") : 
+    const joke = await db.joke.findUnique({
+      where: { id: params.jokeId },
     });
-  }
-  if (joke.jokesterId !== userId) {
-    throw new Response(
-      "Pssh, nice try. That's not your joke",
-      {
-        status: 401,
+    if (!joke) {
+      throw new Response("Can't delete what does not exist", {
+        status: 404,
+      });
+    }
+    if (joke.jokesterId !== userId) {
+      throw new Response(
+        "Pssh, nice try. That's not your joke",
+        {
+          status: 401,
+        }
+      );
+    }
+    await db.joke.delete({ where: { id: params.jokeId } });
+    return redirect("/jokes");
+
+    case("addComment") : 
+    const comment_content = form.get("comment");
+    const comment = {
+      commenterId : userId,
+      jokeId: params.jokeId!, 
+      comment : comment_content, 
+    }
+
+    const commentDocument = await db.comment.create({
+      data: {
+        ...comment
       }
-    );
+    })
+
+    return commentDocument
   }
-  await db.joke.delete({ where: { id: params.jokeId } });
-  return redirect("/jokes");
+
+  return null
 };
 
 export default function JokeRoute() {
@@ -92,6 +123,30 @@ export default function JokeRoute() {
           </button>
         </Form>
       ) : null}
+
+      <h3> Comments</h3>
+      <div> 
+        {data.comments.map((comment) => {
+          return (
+            <div className="commentBox">
+              <p className="commentTitle"> {comment.commenterId} @ {comment.createdAt}</p>
+              <p className="commentBody">
+                {comment.comment}
+              </p>
+
+              </div>
+          )
+        })} 
+      </div>
+      <Form method="post">
+        <textarea
+        placeholder="Add a comment"
+        name="comment"/>
+
+        <button type="submit" className="button" name="_method" value="addComment">
+          Submit
+        </button>
+      </Form>
     </div>
   );
 }
