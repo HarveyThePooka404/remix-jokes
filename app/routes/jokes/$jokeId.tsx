@@ -1,4 +1,4 @@
-import type { Joke, Comment } from "@prisma/client";
+import type { Joke, Comment, User } from "@prisma/client";
 import type {
   ActionFunction,
   LoaderFunction,
@@ -11,6 +11,7 @@ import {
   useParams,
   Form,
 } from "@remix-run/react";
+import { useRef } from "react";
 
 import { db } from "~/util/db.server";
 import {
@@ -18,7 +19,7 @@ import {
   requireUserId,
 } from "~/util/session.server";
 
-type LoaderData = { joke: Joke; comments: Array<Comment>,  isOwner: boolean };
+type LoaderData = { joke: Joke; comments: Array<Comment>,  user: User, isOwner: boolean };
 
 export const loader: LoaderFunction = async ({
   request,
@@ -40,9 +41,26 @@ export const loader: LoaderFunction = async ({
     }
   })
 
+  const userDocument = await db.user.findUnique({
+    where: {
+      id: userId!
+    }
+  })
+
+  const anonymousUser: User = {
+    id: "Anonymous", 
+    createdAt: new Date(),
+    updatedAt: new Date(), 
+    username: "Anonymous", 
+    passwordHash: "Anonymous"
+  }
+
+  const user = userDocument ? userDocument : anonymousUser;
+
   const data: LoaderData = {
     joke,
-    comments, 
+    comments,
+    user, 
     isOwner: userId === joke.jokesterId,
   };
   return json(data);
@@ -85,8 +103,9 @@ export const action: ActionFunction = async ({
 
     case("addComment") : 
     const comment_content = form.get("comment");
+    const username = form.get("username")
     const comment = {
-      commenterId : userId,
+      username : username,
       jokeId: params.jokeId!, 
       comment : comment_content, 
     }
@@ -100,7 +119,7 @@ export const action: ActionFunction = async ({
     return commentDocument
   }
 
-  return null
+  return redirect(".")
 };
 
 export default function JokeRoute() {
@@ -129,7 +148,7 @@ export default function JokeRoute() {
         {data.comments.map((comment) => {
           return (
             <div className="commentBox">
-              <p className="commentTitle"> {comment.commenterId} @ {comment.createdAt}</p>
+              <p className="commentTitle"> {comment.username} @ {new Date(comment.createdAt).toDateString()}</p>
               <p className="commentBody">
                 {comment.comment}
               </p>
@@ -139,6 +158,11 @@ export default function JokeRoute() {
         })} 
       </div>
       <Form method="post">
+        <input 
+        type="hidden"
+        name="username"
+        value={data.user.username} />
+
         <textarea
         placeholder="Add a comment"
         name="comment"/>
