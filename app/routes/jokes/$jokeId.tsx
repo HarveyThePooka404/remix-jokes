@@ -15,17 +15,17 @@ import { useRef } from "react";
 
 import { db } from "~/util/db.server";
 import {
+  getUser,
   getUserId,
   requireUserId,
 } from "~/util/session.server";
 
-type LoaderData = { joke: Joke; comments: Array<Comment>,  user: User, isOwner: boolean };
+type LoaderData = { joke: Joke; comments: Array<Comment>,  user: User | null, isOwner: boolean };
 
 export const loader: LoaderFunction = async ({
   request,
   params,
 }) => {
-  const userId = await getUserId(request);
   const joke = await db.joke.findUnique({
     where: { id: params.jokeId },
   });
@@ -40,22 +40,20 @@ export const loader: LoaderFunction = async ({
       jokeId: params.jokeId
     }
   })
+  
+  const user = await getUser(request);
+  const userId = await getUserId(request);
 
-  const userDocument = await db.user.findUnique({
-    where: {
-      id: userId!
-    }
-  })
 
-  const anonymousUser: User = {
-    id: "Anonymous", 
+/*   const anonymousUser: User = {
+    id: "Anonymous",
     createdAt: new Date(),
-    updatedAt: new Date(), 
-    username: "Anonymous", 
+    updatedAt: new Date(),
+    username: "Anonymous",
     passwordHash: "Anonymous"
   }
 
-  const user = userDocument ? userDocument : anonymousUser;
+  const user = userDocument ? userDocument : anonymousUser */
 
   const data: LoaderData = {
     joke,
@@ -78,7 +76,7 @@ export const action: ActionFunction = async ({
     );
   }
 
-  const userId = await requireUserId(request);
+  const userId = await getUserId(request);
 
   switch(form.get("_method")) {
     case("delete") : 
@@ -103,7 +101,8 @@ export const action: ActionFunction = async ({
 
     case("addComment") : 
     const comment_content = form.get("comment");
-    const username = form.get("username")
+    const username = form.get("username");
+
     const comment = {
       username : username,
       jokeId: params.jokeId!, 
@@ -144,19 +143,27 @@ export default function JokeRoute() {
       ) : null}
 
       <h3> Comments</h3>
-      <div> 
+      <div>
+        {data.comments.length == 0 ? (
+          <div className="commentBox">
+            <p className="commentBody">
+              There is no comments yet.
+            </p>
+          </div>
+        ) : null}
+        
         {data.comments.map((comment) => {
           return (
-            <div className="commentBox">
+            <div key={comment.id} className="commentBox">
               <p className="commentTitle"> {comment.username} @ {new Date(comment.createdAt).toDateString()}</p>
               <p className="commentBody">
                 {comment.comment}
               </p>
-
               </div>
           )
         })} 
       </div>
+      {data.user ? (
       <Form method="post">
         <input 
         type="hidden"
@@ -171,6 +178,7 @@ export default function JokeRoute() {
           Submit
         </button>
       </Form>
+      ) : <div> You need to be logged in to comment </div>}
     </div>
   );
 }
